@@ -25,6 +25,20 @@ func TestRedirectUriMatchesPattern(t *testing.T) {
 		// Exact match
 		{"https://login.example.com/callback", "https://login.example.com/callback", true},
 
+		// A leading wildcard matches within one hostname label, not across dots.
+		{"https://foo-agent.acme.com/callback", "https://*agent.acme.com/callback", true},
+		{"https://agent.acme.com/callback", "https://*agent.acme.com/callback", true},
+		{"https://foo.agent.acme.com/callback", "https://*agent.acme.com/callback", false},
+		{"https://foo-agent.acme.com.evil.com/callback", "https://*agent.acme.com/callback", false},
+		{"http://foo-agent.acme.com/callback", "https://*agent.acme.com/callback", false},
+		{"https://foo-agent.acme.com:8443/callback", "https://*agent.acme.com/callback", false},
+		{"https://foo-agent.acme.com/other", "https://*agent.acme.com/callback", false},
+		{"https://foo-agent.acme.com/callback", "*agent.acme.com/callback", true},
+		{"https://foo.example.com/callback", "https://*.example.com/callback", true},
+		{"https://example.com/callback", "https://*.example.com/callback", false},
+		{"https://foo.bar.example.com/callback", "https://*.example.com/callback", false},
+		{"https://foo-agent.acme.com/callback", "https://*agent.*.com/callback", false},
+
 		// Full URL pattern: exact host
 		{"https://login.example.com/callback", "https://login.example.com/callback", true},
 		{"https://login.example.com/other", "https://login.example.com/callback", false},

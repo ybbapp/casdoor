@@ -761,7 +761,9 @@ func redirectUriMatchesPattern(redirectUri, targetUri string) bool {
 		redirectHost := redirectUriObj.Hostname()
 		targetHost := withScheme.Hostname()
 		var hostMatches bool
-		if strings.HasPrefix(targetHost, ".") {
+		if strings.Contains(targetHost, "*") {
+			hostMatches = redirectHostMatchesWildcard(redirectHost, targetHost)
+		} else if strings.HasPrefix(targetHost, ".") {
 			hostMatches = strings.HasSuffix(redirectHost, targetHost)
 		} else {
 			hostMatches = redirectHost == targetHost || strings.HasSuffix(redirectHost, "."+targetHost)
@@ -785,13 +787,31 @@ func redirectUriMatchesTarget(redirectUri, targetUri *url.URL) bool {
 	}
 	redirectHost := redirectUri.Hostname()
 	targetHost := targetUri.Hostname()
-	if redirectHost != targetHost && !strings.HasSuffix(redirectHost, "."+targetHost) {
+	if strings.Contains(targetHost, "*") {
+		if !redirectHostMatchesWildcard(redirectHost, targetHost) {
+			return false
+		}
+	} else if redirectHost != targetHost && !strings.HasSuffix(redirectHost, "."+targetHost) {
 		return false
 	}
 	if redirectUri.Path != targetUri.Path {
 		return false
 	}
 	return true
+}
+
+// redirectHostMatchesWildcard allows one leading wildcard within the first DNS
+// label. It cannot match dots or turn the remaining hostname into a pattern.
+func redirectHostMatchesWildcard(host, pattern string) bool {
+	if !strings.HasPrefix(pattern, "*") || strings.Count(pattern, "*") != 1 || !strings.Contains(pattern, ".") {
+		return false
+	}
+	suffix := strings.TrimPrefix(pattern, "*")
+	if !strings.HasSuffix(host, suffix) {
+		return false
+	}
+	prefix := strings.TrimSuffix(host, suffix)
+	return !strings.Contains(prefix, ".") && (prefix != "" || !strings.HasPrefix(suffix, "."))
 }
 
 // IsExternalUser reports whether a user of another organization is let to sign in to the application,
